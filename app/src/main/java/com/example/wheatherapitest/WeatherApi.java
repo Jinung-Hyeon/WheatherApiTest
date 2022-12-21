@@ -9,7 +9,7 @@ import retrofit2.http.Query;
 public interface WeatherApi {
 
     @GET("getVilageFcst")
-    Call<ObjectResult> getWeather(
+    Call<WeatherModel> getWeather(
             @Query("serviceKey") String serviceKey,
             @Query("pageNo") String pageNo,
             @Query("numOfRows") String numOfRows,
