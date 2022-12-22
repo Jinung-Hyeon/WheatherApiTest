@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -26,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tv_year, tv_day, tv_time, tv_weather, tv_tmp;
     private ImageView iv_weather;
     private List<WeatherModel.Item> curItems = new ArrayList<>();
-
+    List<WeatherModel.Item> items;
     /*
     * POP : 강수확률
     * PTY : 강수형태 ( 없음 - 0, 비 - 1, 비/눈 - 2, 눈 - 3, 소나기 - 4 )
@@ -65,7 +66,6 @@ public class MainActivity extends AppCompatActivity {
 
         today = dayPattern.format(System.currentTimeMillis());
         hour = hourPattern.format(System.currentTimeMillis());
-
         year_tv = yearPattern_tv.format(System.currentTimeMillis());
         day_tv = dayPattern_tv.format(System.currentTimeMillis());
         time_tv = timePattern_tv.format(System.currentTimeMillis());
@@ -120,19 +120,21 @@ public class MainActivity extends AppCompatActivity {
                         WeatherModel weatherModel = response.body();
 
                         // Log.e("msgmsg", "code : " + weatherModel.response.getBody().getItems().getItem());
-                        List<WeatherModel.Item> items = weatherModel.response.getBody().getItems().getItem();
+                        items = weatherModel.response.getBody().getItems().getItem();
 
 
                         // Log.d("msgmsg", "itmes.size() : " + items.size());
-                        for (int i = 0; i < items.size(); i++){
-                            //Log.d("msgmsg", "i : " + i);
-                            if (hour.equals(items.get(i).getFcstTime())){
-                                Log.e("msgmsg", "i : " + items.get(i));
-                                curItems.add(items.get(i));
-                            }
-                        }
-                        Log.e("msgmsg", "curItems : " + curItems);
-                        weatherUpdate();
+//                        for (int i = 0; i < items.size(); i++){
+//                            //Log.d("msgmsg", "i : " + i);
+//                            if (hour.equals(items.get(i).getFcstTime())){
+//                                Log.e("msgmsg", "i : " + items.get(i));
+//                                curItems.add(items.get(i));
+//                            }
+//                        }
+//                        Log.e("msgmsg", "curItems : " + curItems);
+                        weatherUpdate(items);
+                        Timer timer = new Timer();
+                        timer.start();
                     }
 
                     @Override
@@ -143,37 +145,75 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public void weatherUpdate(){
-        for (int i = 0; i < curItems.size(); i++){
+    class Timer extends Thread {
+
+        @Override
+        public void run() {
+            Calendar stopWeatherApiTime = Calendar.getInstance();
+
+            stopWeatherApiTime.set(Calendar.HOUR_OF_DAY, 17);
+            stopWeatherApiTime.set(Calendar.MINUTE, 0);
+            stopWeatherApiTime.set(Calendar.SECOND, 0);
+            stopWeatherApiTime.set(Calendar.MILLISECOND, 0);
+
+            String beforeTime = hour;
+
+            while (System.currentTimeMillis() < stopWeatherApiTime.getTimeInMillis()) {
+                if (beforeTime.equals(hour)){
+                    try {
+                        Log.e("msgmsg", "hour : " + hour + " beforeTime : " + beforeTime);
+                        Thread.sleep(10 * 6 * 10 * 1000);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                } else {
+                    Log.e("msgmsg", "hour : " + hour + " beforeTime : " + beforeTime + " 시간대 바뀜 날씨정보 업데이트");
+                    weatherUpdate(items);
+                }
+            }
+        }
+
+    }
+
+    public void weatherUpdate(List<WeatherModel.Item> items){
+
+        for (int i = 0; i < items.size(); i++) {
+            if (hour.equals(items.get(i).getFcstTime())) {
+                Log.e("msgmsg", "i : " + items.get(i));
+                curItems.add(items.get(i));
+            }
+        }
+
+        for (int i = 0; i < curItems.size(); i++) {
             String category = curItems.get(i).getCategory();
-            if (category.equals("TMP")){
+            if (category.equals("TMP")) {
                 Log.e("msgmsg", "온도 : " + curItems.get(i).getFcstValue());
                 tv_tmp.setText(curItems.get(i).getFcstValue() + "도");
             }
 
-            if (curItems.get(i).getCategory().equals("PTY")){
+            if (curItems.get(i).getCategory().equals("PTY")) {
                 Log.e("msgmsg", "강수형태 : " + curItems.get(i).getFcstValue());
                 String weather = curItems.get(i).getFcstValue();
-                switch (weather){
+                switch (weather) {
                     case "0":
                         //Toast.makeText(MainActivity.this, "맑음", Toast.LENGTH_SHORT).show();
                         for (int j = 0; j < curItems.size(); j++) {
-                            if (curItems.get(j).getCategory().equals("SKY")){
+                            if (curItems.get(j).getCategory().equals("SKY")) {
                                 Log.e("msgmsg", "하늘상태 : " + curItems.get(j).getFcstValue());
                                 String sky = curItems.get(j).getFcstValue();
                                 switch (sky) {
                                     case "0":
-                                        Toast.makeText(MainActivity.this, "맑음", Toast.LENGTH_SHORT).show();
+                                        //Toast.makeText(MainActivity.this, "맑음", Toast.LENGTH_SHORT).show();
                                         tv_weather.setText("맑음");
                                         iv_weather.setImageResource(R.drawable.wea_icon01);
                                         break;
                                     case "3":
-                                        Toast.makeText(MainActivity.this, "구름많음", Toast.LENGTH_SHORT).show();
+                                        //Toast.makeText(MainActivity.this, "구름많음", Toast.LENGTH_SHORT).show();
                                         tv_weather.setText("구름많음");
                                         iv_weather.setImageResource(R.drawable.wea_icon03);
                                         break;
                                     case "4":
-                                        Toast.makeText(MainActivity.this, "흐림", Toast.LENGTH_SHORT).show();
+                                        //Toast.makeText(MainActivity.this, "흐림", Toast.LENGTH_SHORT).show();
                                         tv_weather.setText("흐림");
                                         iv_weather.setImageResource(R.drawable.wea_icon05);
                                         break;
@@ -182,21 +222,31 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case "1":
-                        Toast.makeText(MainActivity.this, "비", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, "비", Toast.LENGTH_SHORT).show();
+                        tv_weather.setText("비");
+                        iv_weather.setImageResource(R.drawable.wea_icon02);
                         break;
                     case "2":
-                        Toast.makeText(MainActivity.this, "비/눈", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, "비/눈", Toast.LENGTH_SHORT).show();
+                        tv_weather.setText("비/눈");
+                        iv_weather.setImageResource(R.drawable.wea_icon06);
                         break;
                     case "3":
-                        Toast.makeText(MainActivity.this, "눈", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, "눈", Toast.LENGTH_SHORT).show();
+                        tv_weather.setText("눈");
+                        iv_weather.setImageResource(R.drawable.wea_icon04);
                         break;
                     case "4":
-                        Toast.makeText(MainActivity.this, "소나기", Toast.LENGTH_SHORT).show();
+                        //Toast.makeText(MainActivity.this, "소나기", Toast.LENGTH_SHORT).show();
+                        tv_weather.setText("소나기");
+                        iv_weather.setImageResource(R.drawable.wea_icon02);
                         break;
                 }
 
 
             }
         }
+
+
     }
 }
